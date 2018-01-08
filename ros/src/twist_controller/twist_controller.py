@@ -27,7 +27,7 @@ class Controller(object):
             brake = 0
         else:
             throttle = 0
-            brake = -acceleration
+            brake = -acceleration * 2000
 
         steer = self.yaw_controller.get_steering(linear_velocity.x, angular_velocity.z, current_velocity.x)
 

@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from std_msgs.msg import Int32
 from tf.transformations import euler_from_quaternion
 
 import math
@@ -22,7 +23,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 20 # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
@@ -33,6 +34,7 @@ class WaypointUpdater(object):
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
@@ -40,6 +42,8 @@ class WaypointUpdater(object):
         self.waypoints = []
         self.prev_waypoint_index = -1
         self.prev_final_waypoints = []
+        self.traffic_waypoint = 400
+        self.cruise_speed = 11.1
 
         rospy.spin()
 
@@ -48,6 +52,8 @@ class WaypointUpdater(object):
         self.pose = msg.pose
 
         if len(self.waypoints) > 0:
+            rospy.logwarn("At waypoint %s, aiming for traffic light at %s", self.prev_waypoint_index, self.traffic_waypoint)
+            
             # Create final_waypoints
             if self.prev_waypoint_index > -1:
                 next_waypoint_index = self.prev_waypoint_index + self.next_waypoint(self.prev_final_waypoints, self.pose) - 1
@@ -60,10 +66,17 @@ class WaypointUpdater(object):
             final_waypoints = []
             for i in range(LOOKAHEAD_WPS):
                 final_waypoints.append(self.waypoints[next_waypoint_index])
+                
+                # Calculate speed based on traffic light
+                if self.traffic_waypoint >= 0:                
+                    dist = self.distance(self.waypoints, next_waypoint_index, self.traffic_waypoint)
+                    self.set_waypoint_velocity(final_waypoints, i, min(dist / 2, self.cruise_speed))
+
                 next_waypoint_index = next_waypoint_index + 1
                 if (next_waypoint_index >= len(self.waypoints)):
                     next_waypoint_index = 0
             self.prev_final_waypoints = final_waypoints
+
 
             # Publish final_waypoints
             fwcmd = Lane()
@@ -82,6 +95,7 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
+        self.traffic_waypoint = msg.data
         pass
 
     def obstacle_cb(self, msg):

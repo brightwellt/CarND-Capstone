@@ -72,6 +72,10 @@ class TLDetector(object):
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
 
+        # TODO: Actually detect a real light
+        state = TrafficLight.RED
+        light_wp = 600
+
         '''
         Publish upcoming red lights at camera frequency.
         Each predicted state has to occur `STATE_COUNT_THRESHOLD` number
