@@ -38,6 +38,7 @@ class WaypointUpdater(object):
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
+        self.waypoints = []
 
         rospy.spin()
 
@@ -45,21 +46,22 @@ class WaypointUpdater(object):
         # TODO: Implement
         self.pose = msg.pose
 
-        # Create final_waypoints
-        next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
+        if len(self.waypoints) > 0:
+            # Create final_waypoints
+            next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
 
-	final_waypoints = []
-        for i in range(LOOKAHEAD_WPS):
-            final_waypoints.append(self.waypoints[next_waypoint_index])
-            next_waypoint_index = next_waypoint_index + 1
-            if (next_waypoint_index >= len(self.waypoints)):
-                next_waypoint_index = 0
+	    final_waypoints = []
+            for i in range(LOOKAHEAD_WPS):
+                final_waypoints.append(self.waypoints[next_waypoint_index])
+                next_waypoint_index = next_waypoint_index + 1
+                if (next_waypoint_index >= len(self.waypoints)):
+                    next_waypoint_index = 0
 
-        # Publish final_waypoints
-        fwcmd = Lane()
-        fwcmd.header = msg.header
-        fwcmd.waypoints = final_waypoints
-        self.final_waypoints_pub.publish(fwcmd)
+            # Publish final_waypoints
+            fwcmd = Lane()
+            fwcmd.header = msg.header
+            fwcmd.waypoints = final_waypoints
+            self.final_waypoints_pub.publish(fwcmd)
 
         pass
 
