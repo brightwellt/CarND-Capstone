@@ -7,6 +7,7 @@ from geometry_msgs.msg import TwistStamped, Twist
 import math
 
 from twist_controller import Controller
+from yaw_controller import YawController
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -54,7 +55,10 @@ class DBWNode(object):
                                          BrakeCmd, queue_size=1)
 
         # TODO: Create `TwistController` object
-        self.controller = Controller()#<Arguments you wish to provide>)
+        min_speed = 0
+        yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
+
+        self.controller = Controller(yaw_controller)
 
         # TODO: Subscribe to all the topics you need to
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cb)
