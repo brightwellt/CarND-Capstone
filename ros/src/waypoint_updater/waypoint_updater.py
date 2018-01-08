@@ -3,6 +3,7 @@
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from tf.transformations import euler_from_quaternion
 
 import math
 
@@ -42,10 +43,29 @@ class WaypointUpdater(object):
 
     def pose_cb(self, msg):
         # TODO: Implement
+        self.pose = msg.pose
+
+        # Create final_waypoints
+        next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
+
+	final_waypoints = []
+        for i in range(LOOKAHEAD_WPS):
+            final_waypoints.append(self.waypoints[next_waypoint_index])
+            next_waypoint_index = next_waypoint_index + 1
+            if (next_waypoint_index >= len(self.waypoints)):
+                next_waypoint_index = 0
+
+        # Publish final_waypoints
+        fwcmd = Lane()
+        fwcmd.header = msg.header
+        fwcmd.waypoints = final_waypoints
+        self.final_waypoints_pub.publish(fwcmd)
+
         pass
 
     def waypoints_cb(self, waypoints):
         # TODO: Implement
+        self.waypoints = waypoints.waypoints
         pass
 
     def traffic_cb(self, msg):
@@ -70,6 +90,42 @@ class WaypointUpdater(object):
             wp1 = i
         return dist
 
+    def closest_waypoint(self, waypoints, vehicle_pose):
+        closest_dist = 1000000
+        closest_index = 0
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        for i in range(1, len(waypoints)):
+            dist = dl(waypoints[i].pose.pose.position, vehicle_pose.position)
+            if dist < closest_dist:
+                closest_index = i
+                closest_dist = dist
+        return closest_index
+
+    def next_waypoint(self, waypoints, vehicle_pose):
+        x = vehicle_pose.position.x 
+        y = vehicle_pose.position.y
+        yaw = self.get_yaw(vehicle_pose)
+
+        closest_index = self.closest_waypoint(waypoints, vehicle_pose)
+        closest_x = waypoints[closest_index].pose.pose.position.x
+        closest_y = waypoints[closest_index].pose.pose.position.y
+
+        closest_heading = math.atan2(closest_y - y, closest_x - x)
+        angle = abs(yaw - closest_heading)
+
+        if angle > math.pi:
+            next_index = closest_index + 1
+        else:
+            next_index = closest_index
+
+        return next_index
+
+    def get_yaw(self, pose):
+        # Convert from Quaternion to Euler angles
+        orientation_q = pose.orientation 
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
+        return yaw
 
 if __name__ == '__main__':
     try:
