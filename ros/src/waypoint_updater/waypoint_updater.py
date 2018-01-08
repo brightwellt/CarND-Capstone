@@ -52,7 +52,7 @@ class WaypointUpdater(object):
             if self.prev_waypoint_index > -1:
                 next_waypoint_index = self.prev_waypoint_index + self.next_waypoint(self.prev_final_waypoints, self.pose) - 1
                 if (next_waypoint_index >= len(self.waypoints)):
-                    next_waypoint_index = next_waypoint_index - len(self.waypoints))
+                    next_waypoint_index = next_waypoint_index - len(self.waypoints)
             else:
                 next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
             self.prev_waypoint_index = next_waypoint_index
