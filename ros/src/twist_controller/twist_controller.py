@@ -18,10 +18,7 @@ class Controller(object):
 
         steer = self.yaw_controller.get_steering(linear_velocity.x, angular_velocity.z, current_velocity.x)
 
-        rospy.logerr('linear vel %s, angular vel %s, current vel %s, steer %s', 
-               linear_velocity.x, angular_velocity.z, current_velocity.x, steer)
-
-	if current_velocity.x > 10.:
+	if current_velocity.x > linear_velocity.x:
             throttle = 0.
         else:
             throttle = 1.
