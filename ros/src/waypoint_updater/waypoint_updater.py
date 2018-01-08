@@ -34,11 +34,12 @@ class WaypointUpdater(object):
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
-
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
         self.waypoints = []
+        self.prev_waypoint_index = -1
+        self.prev_final_waypoints = []
 
         rospy.spin()
 
@@ -48,7 +49,13 @@ class WaypointUpdater(object):
 
         if len(self.waypoints) > 0:
             # Create final_waypoints
-            next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
+            if self.prev_waypoint_index > -1:
+                next_waypoint_index = self.prev_waypoint_index + self.next_waypoint(self.prev_final_waypoints, self.pose) - 1
+                if (next_waypoint_index >= len(self.waypoints)):
+                    next_waypoint_index = next_waypoint_index - len(self.waypoints))
+            else:
+                next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
+            self.prev_waypoint_index = next_waypoint_index
 
 	    final_waypoints = []
             for i in range(LOOKAHEAD_WPS):
@@ -56,12 +63,15 @@ class WaypointUpdater(object):
                 next_waypoint_index = next_waypoint_index + 1
                 if (next_waypoint_index >= len(self.waypoints)):
                     next_waypoint_index = 0
+            self.prev_final_waypoints = final_waypoints
 
             # Publish final_waypoints
             fwcmd = Lane()
             fwcmd.header = msg.header
             fwcmd.waypoints = final_waypoints
             self.final_waypoints_pub.publish(fwcmd)
+
+            
 
         pass
 
