@@ -8,6 +8,7 @@ import math
 
 from twist_controller import Controller
 from yaw_controller import YawController
+from pid import PID
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -46,6 +47,11 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+        k_p = 0.3
+        k_i = 0.0
+        k_d = 0.0
+        min_val = -1.0
+        max_val = 1.0
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
@@ -57,8 +63,9 @@ class DBWNode(object):
         # TODO: Create `TwistController` object
         min_speed = 0
         yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
+        pid_controller = PID(k_p, k_i, k_d, min_val, max_val)
 
-        self.controller = Controller(yaw_controller)
+        self.controller = Controller(yaw_controller, pid_controller)
 
         # TODO: Subscribe to all the topics you need to
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cb)
