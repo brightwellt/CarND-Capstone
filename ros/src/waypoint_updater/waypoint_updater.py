@@ -42,8 +42,7 @@ class WaypointUpdater(object):
         self.waypoints = []
         self.prev_waypoint_index = -1
         self.prev_final_waypoints = []
-        self.traffic_waypoint = 400
-        self.cruise_speed = 11.1
+        self.traffic_waypoint = -1
 
         rospy.spin()
 
@@ -52,40 +51,45 @@ class WaypointUpdater(object):
         self.pose = msg.pose
 
         if len(self.waypoints) > 0:
+
+            # Diagnostic message indicating position of next red traffic light
             rospy.logwarn("At waypoint %s, aiming for traffic light at %s", self.prev_waypoint_index, self.traffic_waypoint)
             
-            # Create final_waypoints
+            # Find next waypoint
             if self.prev_waypoint_index > -1:
+                # If we already know roughly where we are, search reduced set of waypoints                
                 next_waypoint_index = self.prev_waypoint_index + self.next_waypoint(self.prev_final_waypoints, self.pose) - 1
                 if (next_waypoint_index >= len(self.waypoints)):
                     next_waypoint_index = next_waypoint_index - len(self.waypoints)
             else:
+                # We don't know where we are, search the full set of waypoints
                 next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
             self.prev_waypoint_index = next_waypoint_index
 
+            # Create final_waypoints
             final_waypoints = []
             for i in range(LOOKAHEAD_WPS):
+
+                # Add waypoint to list
                 final_waypoints.append(self.waypoints[next_waypoint_index])
                 
-                # Calculate speed based on traffic light
+                # Calculate speed at waypoint based on traffic lights
                 if self.traffic_waypoint >= 0:                
                     dist = self.distance(self.waypoints, next_waypoint_index, self.traffic_waypoint)
-                    self.set_waypoint_velocity(final_waypoints, i, min(dist / 2, self.cruise_speed))
+                    target_vel = min(dist / 2, self.get_waypoint_velocity(final_waypoints[i]))
+                    self.set_waypoint_velocity(final_waypoints, i, target_vel)
 
+                # Move on to next waypoint
                 next_waypoint_index = next_waypoint_index + 1
                 if (next_waypoint_index >= len(self.waypoints)):
                     next_waypoint_index = 0
             self.prev_final_waypoints = final_waypoints
-
 
             # Publish final_waypoints
             fwcmd = Lane()
             fwcmd.header = msg.header
             fwcmd.waypoints = final_waypoints
             self.final_waypoints_pub.publish(fwcmd)
-
-            
-
         pass
 
     def waypoints_cb(self, waypoints):
@@ -117,6 +121,7 @@ class WaypointUpdater(object):
         return dist
 
     def closest_waypoint(self, waypoints, vehicle_pose):
+        # Calculate closest waypoint to current vehicle position
         closest_dist = 1000000
         closest_index = 0
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
@@ -128,6 +133,7 @@ class WaypointUpdater(object):
         return closest_index
 
     def next_waypoint(self, waypoints, vehicle_pose):
+        # Find next waypoint that the vehicle will encounter based on current vehicle position and orientation
         x = vehicle_pose.position.x 
         y = vehicle_pose.position.y
         yaw = self.get_yaw(vehicle_pose)

@@ -124,6 +124,7 @@ class DBWNode(object):
 
     def dbw_status_cb(self, msg):
         self.dbw_enabled = msg.data
+        pass
 
 if __name__ == '__main__':
     DBWNode()
