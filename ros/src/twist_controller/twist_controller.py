@@ -7,10 +7,15 @@ ONE_MPH = 0.44704
 
 
 class Controller(object):
-    def __init__(self, yaw_controller, pid_controller):
+    def __init__(self, yaw_controller, pid_controller, vehicle_mass, fuel_capacity, wheel_radius):
         # TODO: Implement
         self.yaw_controller = yaw_controller
         self.pid_controller = pid_controller
+
+        # Torque = Force * Perpendicular Distance
+        # Force  = Mass * Acceleration
+        # Torque Factor = Mass * Perpendicular Distance
+        self.torque_factor = (vehicle_mass + fuel_capacity * GAS_DENSITY) * wheel_radius
         pass
 
     def control(self, linear_velocity, angular_velocity, current_velocity, dbw_enabled):
@@ -27,7 +32,7 @@ class Controller(object):
             brake = 0
         else:
             throttle = 0
-            brake = -acceleration * 2000
+            brake = -acceleration * self.torque_factor
 
         steer = self.yaw_controller.get_steering(linear_velocity.x, angular_velocity.z, current_velocity.x)
 
