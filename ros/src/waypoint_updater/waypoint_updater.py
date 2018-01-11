@@ -44,6 +44,9 @@ class WaypointUpdater(object):
         self.prev_final_waypoints = []
         self.traffic_waypoint = -1
 
+        self.velocity = self.kmph2mps(rospy.get_param('/waypoint_loader/velocity'))
+        self.wheel_base = rospy.get_param('/dbw_node/wheel_base', 2.8498)
+
         rospy.spin()
 
     def pose_cb(self, msg):
@@ -53,7 +56,7 @@ class WaypointUpdater(object):
         if len(self.waypoints) > 0:
 
             # Diagnostic message indicating position of next red traffic light
-            rospy.logwarn("At waypoint %s, aiming for traffic light at %s", self.prev_waypoint_index, self.traffic_waypoint)
+            #rospy.logwarn("WU: Car at waypoint %s, red traffic light at waypoint %s", self.prev_waypoint_index, self.traffic_waypoint)
             
             # Find next waypoint
             if self.prev_waypoint_index > -1:
@@ -74,10 +77,12 @@ class WaypointUpdater(object):
                 final_waypoints.append(self.waypoints[next_waypoint_index])
                 
                 # Calculate speed at waypoint based on traffic lights
-                if self.traffic_waypoint >= 0:                
+                if self.traffic_waypoint >= 0:
                     dist = self.distance(self.waypoints, next_waypoint_index, self.traffic_waypoint)
-                    target_vel = min(dist / 2, self.get_waypoint_velocity(final_waypoints[i]))
+                    target_vel = min(max(0, (dist - self.wheel_base) / 2), self.velocity)
                     self.set_waypoint_velocity(final_waypoints, i, target_vel)
+                else:
+                    self.set_waypoint_velocity(final_waypoints, i, self.velocity)
 
                 # Move on to next waypoint
                 next_waypoint_index = next_waypoint_index + 1
@@ -158,6 +163,9 @@ class WaypointUpdater(object):
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (roll, pitch, yaw) = euler_from_quaternion(orientation_list)
         return yaw
+
+    def kmph2mps(self, velocity_kmph):
+        return (velocity_kmph * 1000.) / (60. * 60.)
 
 if __name__ == '__main__':
     try:
