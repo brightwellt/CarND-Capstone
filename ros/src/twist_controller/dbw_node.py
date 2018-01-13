@@ -126,4 +126,7 @@ class DBWNode(object):
         pass
 
 if __name__ == '__main__':
-    DBWNode()
+    try:    
+	DBWNode()
+    except rospy.ROSInterruptException:
+	rospy.logerr('Error: Not start dbw_node!')
