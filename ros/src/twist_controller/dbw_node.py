@@ -52,9 +52,9 @@ class DBWNode(object):
         min_speed = 0
         
         # Throttle/Brake PID parameters
-        k_p = 0.3
+        k_p = 0.1
         k_i = 0.0
-        k_d = 0.0
+        k_d = 0.3
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd', SteeringCmd, queue_size=1)
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd', ThrottleCmd, queue_size=1)
@@ -67,13 +67,13 @@ class DBWNode(object):
         self.controller = Controller(yaw_controller, pid_controller, vehicle_mass, fuel_capacity, wheel_radius)
 
         # TODO: Subscribe to all the topics you need to
-        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cb)
-        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
-        rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_status_cb)
+        rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.current_velocity_cb)
+        rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
 
 	self.dbw_enabled = False
         self.velocity_demand = Twist()
-        self.velocity = Twist()
+        self.current_velocity = Twist()
 
         self.loop()
 
@@ -85,7 +85,7 @@ class DBWNode(object):
 
             throttle, brake, steering = self.controller.control(self.velocity_demand.linear,
                                                                 self.velocity_demand.angular,
-                                                                self.velocity.linear,
+                                                                self.current_velocity.linear,
                                                                 self.dbw_enabled) #,
                                                                 # <any other argument you need>)
             if self.dbw_enabled:
@@ -111,17 +111,17 @@ class DBWNode(object):
         bcmd.pedal_cmd = brake
         self.brake_pub.publish(bcmd)
 
-    def twist_cb(self, msg):
+    def twist_cmd_cb(self, msg):
         # TODO: Implement
         self.velocity_demand = msg.twist
         pass
 
-    def velocity_cb(self, msg):
+    def current_velocity_cb(self, msg):
         # TODO: Implement
-        self.velocity = msg.twist
+        self.current_velocity = msg.twist
         pass
 
-    def dbw_status_cb(self, msg):
+    def dbw_enabled_cb(self, msg):
         self.dbw_enabled = msg.data
         pass
 
