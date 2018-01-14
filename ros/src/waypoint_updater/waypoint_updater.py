@@ -58,36 +58,34 @@ class WaypointUpdater(object):
             # Diagnostic message indicating position of next red traffic light
             #rospy.logwarn("WU: Car at waypoint %s, red traffic light at waypoint %s", self.prev_waypoint_index, self.traffic_waypoint)
             
-            # Find next waypoint
+            # Find closest waypoint
             if self.prev_waypoint_index > -1:
-                # If we already know roughly where we are, search reduced set of waypoints                
-                next_waypoint_index = self.prev_waypoint_index + self.next_waypoint(self.prev_final_waypoints, self.pose) - 1
-                if (next_waypoint_index >= len(self.waypoints)):
-                    next_waypoint_index = next_waypoint_index - len(self.waypoints)
+                # If we already know roughly where we are, search locally (much faster)                
+                closest_waypoint_index = self.closest_local_waypoint(self.waypoints, self.pose, self.prev_waypoint_index)
             else:
                 # We don't know where we are, search the full set of waypoints
-                next_waypoint_index = self.next_waypoint(self.waypoints, self.pose)
-            self.prev_waypoint_index = next_waypoint_index
+                closest_waypoint_index = self.closest_waypoint(self.waypoints, self.pose)
+            self.prev_waypoint_index = closest_waypoint_index
 
             # Create final_waypoints
             final_waypoints = []
             for i in range(LOOKAHEAD_WPS):
 
                 # Add waypoint to list
-                final_waypoints.append(self.waypoints[next_waypoint_index])
+                final_waypoints.append(self.waypoints[closest_waypoint_index])
                 
                 # Calculate speed at waypoint based on traffic lights
                 if self.traffic_waypoint >= 0:
-                    dist = self.distance(self.waypoints, next_waypoint_index, self.traffic_waypoint)
+                    dist = self.distance(self.waypoints, closest_waypoint_index, self.traffic_waypoint)
                     target_vel = min(max(0, (dist - self.wheel_base) / 2), self.velocity)
                     self.set_waypoint_velocity(final_waypoints, i, target_vel)
                 else:
                     self.set_waypoint_velocity(final_waypoints, i, self.velocity)
 
                 # Move on to next waypoint
-                next_waypoint_index = next_waypoint_index + 1
-                if (next_waypoint_index >= len(self.waypoints)):
-                    next_waypoint_index = 0
+                closest_waypoint_index = closest_waypoint_index + 1
+                if (closest_waypoint_index >= len(self.waypoints)):
+                    closest_waypoint_index = 0
             self.prev_final_waypoints = final_waypoints
 
             # Publish final_waypoints
@@ -129,7 +127,7 @@ class WaypointUpdater(object):
         # Calculate closest waypoint to current vehicle position
         closest_dist = 1000000
         closest_index = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
         for i in range(1, len(waypoints)):
             dist = dl(waypoints[i].pose.pose.position, vehicle_pose.position)
             if dist < closest_dist:
@@ -137,25 +135,36 @@ class WaypointUpdater(object):
                 closest_dist = dist
         return closest_index
 
-    def next_waypoint(self, waypoints, vehicle_pose):
-        # Find next waypoint that the vehicle will encounter based on current vehicle position and orientation
-        x = vehicle_pose.position.x 
-        y = vehicle_pose.position.y
-        yaw = self.get_yaw(vehicle_pose)
+    def closest_local_waypoint(self, waypoints, vehicle_pose, last_waypoint):
+        # Calculate closest waypoint local to previous closest waypoint
+        # NOTE: Assumes waypoints are sequential (but not the direction of vehicle travel)
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
+        closest_dist = dl(waypoints[last_waypoint].pose.pose.position, vehicle_pose.position)
+        closest_waypoint = last_waypoint
 
-        closest_index = self.closest_waypoint(waypoints, vehicle_pose)
-        closest_x = waypoints[closest_index].pose.pose.position.x
-        closest_y = waypoints[closest_index].pose.pose.position.y
+        # Search forwards
+        next_waypoint = last_waypoint + 1 if last_waypoint + 1 < len(waypoints) else 0
+        while next_waypoint != closest_waypoint:
+            dist = dl(waypoints[next_waypoint].pose.pose.position, vehicle_pose.position)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_waypoint = next_waypoint
+                next_waypoint = next_waypoint + 1 if next_waypoint + 1 < len(waypoints) else 0
+            else:
+                break
 
-        closest_heading = math.atan2(closest_y - y, closest_x - x)
-        angle = abs(yaw - closest_heading)
+        # Search backwards
+        prev_waypoint = last_waypoint - 1 if last_waypoint - 1 >= 0 else len(waypoints) - 1
+        while prev_waypoint != closest_waypoint:
+            dist = dl(waypoints[prev_waypoint].pose.pose.position, vehicle_pose.position)
+            if dist < closest_dist:
+                closest_dist = dist
+                closest_waypoint = prev_waypoint
+                prev_waypoint = prev_waypoint - 1 if prev_waypoint - 1 >= 0 else len(waypoints) - 1
+            else:
+                break
 
-        if angle > math.pi:
-            next_index = closest_index + 1
-        else:
-            next_index = closest_index
-
-        return next_index
+        return closest_waypoint
 
     def get_yaw(self, pose):
         # Convert from Quaternion to Euler angles
