@@ -39,9 +39,9 @@ class WaypointUpdater(object):
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
-        self.waypoints = []
-        self.prev_waypoint_index = -1
-        self.prev_final_waypoints = []
+        self.waypoints = [] 
+        self.last_waypoint = None
+        self.last_final_waypoints = []
         self.traffic_waypoint = -1
 
         self.velocity = self.kmph2mps(rospy.get_param('/waypoint_loader/velocity'))
@@ -55,44 +55,39 @@ class WaypointUpdater(object):
 
         if len(self.waypoints) > 0:
 
-            # Diagnostic message indicating position of next red traffic light
-            #rospy.logwarn("WU: Car at waypoint %s, red traffic light at waypoint %s", self.prev_waypoint_index, self.traffic_waypoint)
-            
             # Find closest waypoint
-            if self.prev_waypoint_index > -1:
-                # If we already know roughly where we are, search locally (much faster)                
-                closest_waypoint_index = self.closest_local_waypoint(self.waypoints, self.pose, self.prev_waypoint_index)
-            else:
-                # We don't know where we are, search the full set of waypoints
-                closest_waypoint_index = self.closest_waypoint(self.waypoints, self.pose)
-            self.prev_waypoint_index = closest_waypoint_index
+            closest_waypoint = self.get_closest_waypoint(self.waypoints, self.pose)
 
             # Create final_waypoints
             final_waypoints = []
             for i in range(LOOKAHEAD_WPS):
 
                 # Add waypoint to list
-                final_waypoints.append(self.waypoints[closest_waypoint_index])
+                final_waypoints.append(self.waypoints[closest_waypoint])
                 
                 # Calculate speed at waypoint based on traffic lights
                 if self.traffic_waypoint >= 0:
-                    dist = self.distance(self.waypoints, closest_waypoint_index, self.traffic_waypoint)
+                    dist = self.distance(self.waypoints, closest_waypoint, self.traffic_waypoint)
                     target_vel = min(max(0, (dist - self.wheel_base) / 2), self.velocity)
                     self.set_waypoint_velocity(final_waypoints, i, target_vel)
                 else:
                     self.set_waypoint_velocity(final_waypoints, i, self.velocity)
 
                 # Move on to next waypoint
-                closest_waypoint_index = closest_waypoint_index + 1
-                if (closest_waypoint_index >= len(self.waypoints)):
-                    closest_waypoint_index = 0
-            self.prev_final_waypoints = final_waypoints
+                closest_waypoint = closest_waypoint + 1
+                if (closest_waypoint >= len(self.waypoints)):
+                    closest_waypoint = 0
+            self.last_final_waypoints = final_waypoints
 
             # Publish final_waypoints
             fwcmd = Lane()
             fwcmd.header = msg.header
             fwcmd.waypoints = final_waypoints
             self.final_waypoints_pub.publish(fwcmd)
+
+            # Diagnostic message indicating position of next red traffic light
+            #rospy.logwarn("WU: Car at waypoint %s, red traffic light at waypoint %s", closest_waypoint, self.traffic_waypoint)
+
         pass
 
     def waypoints_cb(self, waypoints):
@@ -123,19 +118,31 @@ class WaypointUpdater(object):
             wp1 = i
         return dist
 
-    def closest_waypoint(self, waypoints, vehicle_pose):
+    def get_closest_waypoint(self, waypoints, vehicle_pose):
+        # Find closest waypoint
+        # NOTE: Assumes we are looking in similar region each time this is called
+        if self.last_waypoint:
+            # If we already know roughly where we are, search locally (much faster)                
+            closest_waypoint = self.get_closest_local_waypoint(waypoints, vehicle_pose, self.last_waypoint)
+        else:
+            # We don't know where we are, search the full set of waypoints
+            closest_waypoint = self.get_closest_global_waypoint(waypoints, vehicle_pose)
+        self.last_waypoint = closest_waypoint
+        return closest_waypoint
+
+    def get_closest_global_waypoint(self, waypoints, vehicle_pose):
         # Calculate closest waypoint to current vehicle position
         closest_dist = 1000000
-        closest_index = 0
+        closest_waypoint = 0
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
         for i in range(1, len(waypoints)):
             dist = dl(waypoints[i].pose.pose.position, vehicle_pose.position)
             if dist < closest_dist:
-                closest_index = i
+                closest_waypoint = i
                 closest_dist = dist
-        return closest_index
+        return closest_waypoint
 
-    def closest_local_waypoint(self, waypoints, vehicle_pose, last_waypoint):
+    def get_closest_local_waypoint(self, waypoints, vehicle_pose, last_waypoint):
         # Calculate closest waypoint local to previous closest waypoint
         # NOTE: Assumes waypoints are sequential (but not the direction of vehicle travel)
         dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
