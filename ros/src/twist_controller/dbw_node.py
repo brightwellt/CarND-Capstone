@@ -57,8 +57,8 @@ class DBWNode(object):
         k_d = 0.3
 
 	self.dbw_enabled = False # subscribe from /vehicle/dbw_enabled
-        self.target_velocity = Twist() # subscribe from /twist_cmd
-        self.current_velocity = Twist() # subsribe from /current_velocity
+	self.target_velocity = Twist() # subscribe from /twist_cmd
+	self.current_velocity = Twist() # subsribe from /current_velocity
 	self.previous_throttle = 0
 	self.previous_steering = 0
 	self.previous_brake = 0
@@ -100,7 +100,7 @@ class DBWNode(object):
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()
         tcmd.enable = (abs(throttle - self.previous_throttle) > 0.05)
-	if tcmd.enable :
+        if tcmd.enable :
 	    self.previous_throttle = throttle
         tcmd.pedal_cmd_type = ThrottleCmd.CMD_PERCENT
         tcmd.pedal_cmd = throttle
@@ -108,14 +108,14 @@ class DBWNode(object):
 
         scmd = SteeringCmd()
         scmd.enable = (abs(throttle - self.previous_steering) > 0.05)
-	if scmd.enable :
+        if scmd.enable :
             self.previous_steer = steer
         scmd.steering_wheel_angle_cmd = steer
         self.steer_pub.publish(scmd)
             
         bcmd = BrakeCmd()
         bcmd.enable = (abs(brake - self.previous_brake) > 0.05)
-	if bcmd.enable :
+        if bcmd.enable :
             self.previous_brake = brake
         bcmd.pedal_cmd_type = BrakeCmd.CMD_TORQUE
         bcmd.pedal_cmd = brake
