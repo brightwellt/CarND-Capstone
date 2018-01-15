@@ -52,9 +52,9 @@ class DBWNode(object):
         min_speed = 0.0
         
         # Throttle/Brake PID parameters
-        k_p = 0.1
+        k_p = 0.5
         k_i = 0.0
-        k_d = 0.3
+        k_d = 0.1
 
 	self.dbw_enabled = False # subscribe from /vehicle/dbw_enabled
 	self.target_velocity = Twist() # subscribe from /twist_cmd

@@ -29,11 +29,11 @@ class Controller(object):
         
         if (acceleration > 0):
             throttle = acceleration
-            brake = 0
+            brake = 0.0
         else:
-            throttle = 0
+            throttle = 0.0
             brake = -acceleration * self.torque_factor
 
         steer = self.yaw_controller.get_steering(linear_velocity.x, angular_velocity.z, current_velocity.x)
 
-        return throttle, brake, 2 * steer
+        return throttle, brake, steer
