@@ -66,7 +66,13 @@ class WaypointUpdater(object):
                 final_waypoints.append(self.waypoints[closest_waypoint])
                 
                 # Calculate speed at waypoint based on traffic lights
+                traffic_waypoint_offset = -1
                 if self.traffic_waypoint >= 0:
+                    traffic_waypoint_offset = self.traffic_waypoint - closest_waypoint
+                    if traffic_waypoint_offset < 0:
+                        traffic_waypoint_offset = traffic_waypoint_offset + len(self.waypoints)
+                    
+                if traffic_waypoint_offset >= 0 and traffic_waypoint_offset < LOOKAHEAD_WPS:
                     dist = self.distance(self.waypoints, closest_waypoint, self.traffic_waypoint)
                     target_vel = min(max(0, (dist - self.wheel_base) / 2), self.velocity)
                     self.set_waypoint_velocity(final_waypoints, i, target_vel)
