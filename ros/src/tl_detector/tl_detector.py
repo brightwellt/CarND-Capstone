@@ -23,6 +23,17 @@ class TLDetector(object):
         self.camera_image = None
         self.lights = []
 
+        self.state = TrafficLight.UNKNOWN
+        self.last_state = TrafficLight.UNKNOWN
+        self.last_wp = -1
+        self.state_count = 0
+        self.last_waypoint = None
+        self.stop_line_waypoints = None
+
+        self.bridge = CvBridge()
+        self.light_classifier = TLClassifier()
+        self.listener = tf.TransformListener()
+
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
 
@@ -40,17 +51,6 @@ class TLDetector(object):
         self.config = yaml.load(config_string)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
-
-        self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
-        self.listener = tf.TransformListener()
-
-        self.state = TrafficLight.UNKNOWN
-        self.last_state = TrafficLight.UNKNOWN
-        self.last_wp = -1
-        self.state_count = 0
-        self.last_waypoint = None
-        self.stop_line_waypoints = None
 
         rospy.spin()
 
@@ -179,7 +179,7 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         # TODO: REMOVE THIS ONCE CLASSIFIER IS COMPLETE
-        return light.state
+        #return light.state
 
         #Get classification
         return self.light_classifier.get_classification(cv_image)
@@ -196,7 +196,7 @@ class TLDetector(object):
         light = None
 
         # Can only find closest stop line if we know where car is
-        if(self.pose):
+        if(self.pose and self.waypoints):
             car_wp = self.get_closest_waypoint(self.waypoints.waypoints, self.pose.pose)
 
             #TODO find the closest visible traffic light (if one exists)
