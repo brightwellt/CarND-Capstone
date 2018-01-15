@@ -43,17 +43,28 @@ class WaypointUpdater(object):
         self.last_waypoint = None
         self.last_final_waypoints = []
         self.traffic_waypoint = -1
+        self.pose = None
+        self.header = None
 
         self.velocity = self.kmph2mps(rospy.get_param('/waypoint_loader/velocity'))
         self.wheel_base = rospy.get_param('/dbw_node/wheel_base', 2.8498)
 
-        rospy.spin()
+        #rospy.spin()
+        self.loop()
 
     def pose_cb(self, msg):
         # TODO: Implement
         self.pose = msg.pose
+        self.header = msg.header
 
-        if len(self.waypoints) > 0:
+    def loop(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            self.do_work()
+            rate.sleep()
+
+    def do_work(self):
+        if len(self.waypoints) > 0 and self.pose is not None:
 
             # Find closest waypoint
             closest_waypoint = self.get_closest_waypoint(self.waypoints, self.pose)
@@ -64,14 +75,14 @@ class WaypointUpdater(object):
 
                 # Add waypoint to list
                 final_waypoints.append(self.waypoints[closest_waypoint])
-                
+            
                 # Calculate speed at waypoint based on traffic lights
                 traffic_waypoint_offset = -1
                 if self.traffic_waypoint >= 0:
                     traffic_waypoint_offset = self.traffic_waypoint - closest_waypoint
                     if traffic_waypoint_offset < 0:
                         traffic_waypoint_offset = traffic_waypoint_offset + len(self.waypoints)
-                    
+                
                 if traffic_waypoint_offset >= 0 and traffic_waypoint_offset < LOOKAHEAD_WPS:
                     dist = self.distance(self.waypoints, closest_waypoint, self.traffic_waypoint)
                     target_vel = min(max(0, (dist - self.wheel_base) / 2), self.velocity)
@@ -87,13 +98,12 @@ class WaypointUpdater(object):
 
             # Publish final_waypoints
             fwcmd = Lane()
-            fwcmd.header = msg.header
+            fwcmd.header = self.header
             fwcmd.waypoints = final_waypoints
             self.final_waypoints_pub.publish(fwcmd)
 
             # Diagnostic message indicating position of next red traffic light
             #rospy.logwarn("WU: Car at waypoint %s, red traffic light at waypoint %s", closest_waypoint, self.traffic_waypoint)
-
         pass
 
     def waypoints_cb(self, waypoints):

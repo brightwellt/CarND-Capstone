@@ -51,8 +51,11 @@ class TLDetector(object):
         self.state_count = 0
         self.last_waypoint = None
         self.stop_line_waypoints = None
+        self.pose = None
+        self.has_image = None
 
-        rospy.spin()
+        self.loop()
+#        rospy.spin()
 
     def pose_cb(self, msg):
         self.pose = msg
@@ -73,6 +76,15 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
+
+    def loop(self):
+        rate = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            if self.waypoints is not None and self.pose is not None and len(self.lights) > 0: 
+                self.do_work()
+            rate.sleep()
+
+    def do_work(self):
         light_wp, state = self.process_traffic_lights()
 
         '''
@@ -109,7 +121,7 @@ class TLDetector(object):
         # Calculate closest waypoint to current vehicle position
         closest_dist = 1000000
         closest_waypoint = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2)
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 )#+ (a.z-b.z)**2)
         for i in range(1, len(waypoints)):
             dist = dl(waypoints[i].pose.pose.position, vehicle_pose.position)
             if dist < closest_dist:
@@ -179,7 +191,7 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         # TODO: REMOVE THIS ONCE CLASSIFIER IS COMPLETE
-        return light.state
+        #return light.state
 
         #Get classification
         return self.light_classifier.get_classification(cv_image)
