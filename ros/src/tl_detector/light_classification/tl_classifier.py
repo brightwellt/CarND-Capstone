@@ -70,14 +70,14 @@ class TLClassifier(object):
       	boxes=np.squeeze(boxes)
       	scores=np.squeeze(scores)
       	confidence = 0
-      	box_conf = None     
+      	box_conf = []     
       	for i in range(len(classes)):
         	if classes[i] in category_index.keys():
             		if scores[i] > confidence:
                 		confidence = scores[i]
                 		box_conf = boxes[i]      
       	
-      	if box_conf == None :
+      	if len(box_conf) == 0:
       		return TrafficLight.UNKNOWN
       	else:
       		ymin, xmin, ymax, xmax = box_conf
