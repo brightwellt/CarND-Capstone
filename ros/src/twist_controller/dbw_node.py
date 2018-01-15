@@ -9,6 +9,7 @@ import math
 from twist_controller import Controller
 from yaw_controller import YawController
 from pid import PID
+from lowpass import LowPassFilter
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -55,6 +56,9 @@ class DBWNode(object):
         k_p = 0.5
         k_i = 0.0
         k_d = 0.1
+	
+        tau = 0.2
+        ts = 0.1
 
 	self.dbw_enabled = False # subscribe from /vehicle/dbw_enabled
 	self.target_velocity = Twist() # subscribe from /twist_cmd
@@ -70,8 +74,9 @@ class DBWNode(object):
         # TODO: Create `TwistController` object
         yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
         pid_controller = PID(k_p, k_i, k_d, decel_limit, accel_limit)
+        low_pass_filter = LowPassFilter(tau, ts)
 
-        self.controller = Controller(yaw_controller, pid_controller, vehicle_mass, fuel_capacity, wheel_radius)
+        self.controller = Controller(yaw_controller, pid_controller, low_pass_filter, vehicle_mass, fuel_capacity, wheel_radius)
 
         # TODO: Subscribe to all the topics you need to
         rospy.Subscriber('/twist_cmd', TwistStamped, self.twist_cmd_cb)
