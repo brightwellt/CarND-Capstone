@@ -24,6 +24,8 @@ class TLClassifier(object):
         self.index_traffic=10
         self.num_classes = 90
         self.detection_graph = tf.Graph()
+        self.traffic_light_color=4
+        
         with self.detection_graph.as_default():
             od_graph_def = tf.GraphDef()
             with tf.gfile.GFile(self.path_to_ckpt, 'rb') as fid:
@@ -78,7 +80,7 @@ class TLClassifier(object):
                 		box_conf = boxes[i]      
       	
       	if len(box_conf) == 0:
-      		return TrafficLight.UNKNOWN
+      		self.traffic_light_color= TrafficLight.UNKNOWN
       	else:
       		ymin, xmin, ymax, xmax = box_conf
       		(left, right, top, bottom) = (xmin * width, xmax * width,
@@ -103,7 +105,23 @@ class TLClassifier(object):
       		circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)      
       
       		if circles is None:
-        		return TrafficLight.GREEN
+        		rospy.loginfo("TL: traffic light Green")
+        		self.traffic_light_color=TrafficLight.GREEN
+                    
       		else:
-      			return TrafficLight.RED
+        		rospy.loginfo("TL: traffic light RED")
+        		self.traffic_light_color=TrafficLight.RED
+
+      		category_color={ 10: {'id': 10, 'name': self.traffic_light_color}} 
+      		box_show=[]
+      		box_show.append(box_conf)
+      		box_to_color_map =vis_util.visualize_boxes_and_labels_on_image_array(
+                              image_np,
+                              np.array(box_show),
+                              classes,
+                              scores,
+                              category_color,
+                              use_normalized_coordinates=True,
+                              line_thickness=8)    
+        return (self.traffic_light_color, image_np)
         

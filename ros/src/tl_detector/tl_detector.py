@@ -46,12 +46,13 @@ class TLDetector(object):
         '''
         sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
         sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
-
+        self.image_nb_pub = rospy.Publisher('/image_traffic_light', Image)
+        
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
-
+        
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
@@ -194,9 +195,15 @@ class TLDetector(object):
 
         # TODO: REMOVE THIS ONCE CLASSIFIER IS COMPLETE
         #return light.state
+        classifier_result =self.light_classifier.get_classification(cv_image)
+        #rospy.loginfo("TL: classifier_result    %s",classifier_result)
+        rospy.loginfo("TL: classifier_result---0---      %s",classifier_result[0])
 
+        self.light_color=classifier_result[0]
+        imgage_trf=classifier_result[1]
+        self.image_nb_pub.publish(self.bridge.cv2_to_imgmsg(imgage_trf, "bgr8"))
         #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        return self.light_color
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
