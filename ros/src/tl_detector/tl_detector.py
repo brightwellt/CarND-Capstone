@@ -196,7 +196,7 @@ class TLDetector(object):
         # TODO: REMOVE THIS ONCE CLASSIFIER IS COMPLETE
         #return light.state
         classifier_result =self.light_classifier.get_classification(cv_image)
-        #rospy.loginfo("TL: classifier_result    %s",classifier_result)
+        #
         rospy.loginfo("TL: classifier_result---0---      %s",classifier_result[0])
 
         self.light_color=classifier_result[0]

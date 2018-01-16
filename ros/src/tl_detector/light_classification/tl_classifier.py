@@ -57,71 +57,78 @@ class TLClassifier(object):
 
         """
         image_np = load_image_into_numpy_array(image)
-      	# Expand dimensions since the tensorflow model expects images to have shape: [1, None, None, 3]
-      	image_np_expanded = np.expand_dims(image_np, axis=0)
-      	# Actual detection.
-      	(boxes, scores, classes, num) = self.sess.run(
-        	  [self.detection_boxes, self.detection_scores, self.detection_classes, self.num_detections],
-        	  feed_dict={self.image_tensor: image_np_expanded})
-      	
-      	# In the model data, traffic lights have the index number 10
-      	category_index={ 10: {'id': 10, 'name': 'traffic light'}}
-    
-      	height, width, _ = image_np.shape  
-      	classes = np.squeeze(classes).astype(np.int32)
-      	boxes=np.squeeze(boxes)
-      	scores=np.squeeze(scores)
-      	confidence = 0
-      	box_conf = []     
-      	for i in range(len(classes)):
-        	if classes[i] in category_index.keys():
-            		if scores[i] > confidence:
-                		confidence = scores[i]
-                		box_conf = boxes[i]      
-      	
-      	if len(box_conf) == 0:
-      		self.traffic_light_color= TrafficLight.UNKNOWN
-      	else:
-      		ymin, xmin, ymax, xmax = box_conf
-      		(left, right, top, bottom) = (xmin * width, xmax * width,
-        		                    ymin * height, ymax * height)        
-      	   
-      		img_light = image_np[int(top):int(bottom), int(left):int(right)]
-      		traffic_light = cv2.resize(img_light, (64,128))       	
-        
-      		tl_hsv = cv2.cvtColor(traffic_light, cv2.COLOR_BGR2HSV)
-
-      		red_low = np.array([0,50,50])
-      		red_up = np.array([10,255,255])
-      		red1 = cv2.inRange(tl_hsv, red_low , red_up)
-
-      		red_low = np.array([170,50,50])
-      		red_up = np.array([180,255,255])
-      		red2 = cv2.inRange(tl_hsv, red_low , red_up)
-
-      		weighted_img = cv2.addWeighted(red1, 1.0, red2, 1.0, 0.0)
-      		blur = cv2.GaussianBlur(weighted_img,(15,15),0)      	
-
-      		circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)      
+        # Expand dimensions since the tensorflow model expects images to have shape: [1, None, None, 3]
+        image_np_expanded = np.expand_dims(image_np, axis=0)
+        # Actual detection.
+        (boxes, scores, classes, num) = self.sess.run(
+              [self.detection_boxes, self.detection_scores, self.detection_classes, self.num_detections],
+              feed_dict={self.image_tensor: image_np_expanded})
       
-      		if circles is None:
-        		rospy.loginfo("TL: traffic light Green")
-        		self.traffic_light_color=TrafficLight.GREEN
+        # In the model data, traffic lights have the index number 10
+        category_index={ 10: {'id': 10, 'name': 'traffic light'}}
+    
+        height, width, _ = image_np.shape  
+        classes = np.squeeze(classes).astype(np.int32)
+        boxes=np.squeeze(boxes)
+        scores=np.squeeze(scores)
+        confidence = 0
+        box_conf = []  
+        classes_10=[]
+        for i in range(len(classes)):
+            if classes[i] in category_index.keys():
+                if scores[i] > confidence:
+                    confidence = scores[i]
+                    box_conf = boxes[i]
+                    classes_10.append(classes[i])
                     
-      		else:
-        		rospy.loginfo("TL: traffic light RED")
-        		self.traffic_light_color=TrafficLight.RED
+      
+        if len(box_conf) == 0:
+            self.traffic_light_color= TrafficLight.UNKNOWN
+        else:
+            ymin, xmin, ymax, xmax = box_conf
+            (left, right, top, bottom) = (xmin * width, xmax * width,
+                                          ymin * height, ymax * height)        
+        
+            img_light = image_np[int(top):int(bottom), int(left):int(right)]
 
-      		category_color={ 10: {'id': 10, 'name': self.traffic_light_color}} 
-      		box_show=[]
-      		box_show.append(box_conf)
-      		box_to_color_map =vis_util.visualize_boxes_and_labels_on_image_array(
-                              image_np,
-                              np.array(box_show),
-                              classes,
-                              scores,
-                              category_color,
-                              use_normalized_coordinates=True,
-                              line_thickness=8)    
+            box_area=(int(bottom)-int(top))*(int(right)-int(left))
+            rospy.loginfo("TL: box are    %s",box_area)
+            if box_area>1000:
+                traffic_light = cv2.resize(img_light, (64,128))       	
+
+                tl_hsv = cv2.cvtColor(traffic_light, cv2.COLOR_BGR2HSV)
+
+                red_low = np.array([0,50,50])
+                red_up = np.array([10,255,255])
+                red1 = cv2.inRange(tl_hsv, red_low , red_up)
+
+                red_low = np.array([170,50,50])
+                red_up = np.array([180,255,255])
+                red2 = cv2.inRange(tl_hsv, red_low , red_up)
+
+                weighted_img = cv2.addWeighted(red1, 1.0, red2, 1.0, 0.0)
+                blur = cv2.GaussianBlur(weighted_img,(15,15),0)      	
+
+                circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)      
+
+                if circles is None:
+                    rospy.loginfo("TL: traffic light Green")
+                    self.traffic_light_color=TrafficLight.GREEN
+
+                else:
+                    rospy.loginfo("TL: traffic light RED")
+                    self.traffic_light_color=TrafficLight.RED
+
+                category_color={ 10: {'id': 10, 'name': self.traffic_light_color}} 
+                box_show=[]
+                box_show.append(box_conf)
+                box_to_color_map =vis_util.visualize_boxes_and_labels_on_image_array(
+                                  image_np,
+                                  np.array(box_show),
+                                  np.array(classes_10),
+                                  scores,
+                                  category_color,
+                                  use_normalized_coordinates=True,
+                                  line_thickness=8)    
         return (self.traffic_light_color, image_np)
         
