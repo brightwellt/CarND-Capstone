@@ -105,16 +105,25 @@ class TLClassifier(object):
                 red_low = np.array([170,50,50])
                 red_up = np.array([180,255,255])
                 red2 = cv2.inRange(tl_hsv, red_low , red_up)
+		
+		yel_low = np.array([20,100,100])
+                yel_up = np.array([40,255,255])
+                yel = cv2.inRange(tl_hsv, yel_low , yel_up)
 
                 weighted_img = cv2.addWeighted(red1, 1.0, red2, 1.0, 0.0)
-                blur = cv2.GaussianBlur(weighted_img,(15,15),0)      	
+                blur = cv2.GaussianBlur(weighted_img,(15,15),0)
+		blur_yel = cv2.GaussianBlur(yel,(15,15),0)
 
-                circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)      
+                circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)
+		circles_yel = cv2.HoughCircles(blur_yel,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)
 
                 if circles is None:
-                    rospy.loginfo("TL: traffic light Green")
-                    self.traffic_light_color=TrafficLight.GREEN
-
+		    if circles_yel is None:
+			rospy.loginfo("TL: traffic light Green")
+                        self.traffic_light_color=TrafficLight.GREEN
+		    else:
+			rospy.loginfo("TL: traffic light Yellow")
+                        self.traffic_light_color=TrafficLight.YELLOW
                 else:
                     rospy.loginfo("TL: traffic light RED")
                     self.traffic_light_color=TrafficLight.RED
