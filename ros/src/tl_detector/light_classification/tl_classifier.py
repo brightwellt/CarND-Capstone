@@ -74,26 +74,29 @@ class TLClassifier(object):
         confidence = 0
         box_conf = []  
         classes_10=[]
+        box_area=0
         for i in range(len(classes)):
             if classes[i] in category_index.keys():
                 if scores[i] > confidence:
                     confidence = scores[i]
                     box_conf = boxes[i]
                     classes_10.append(classes[i])
-                    
-      
-        if len(box_conf) == 0:
-            self.traffic_light_color= TrafficLight.UNKNOWN
-        else:
-            ymin, xmin, ymax, xmax = box_conf
-            (left, right, top, bottom) = (xmin * width, xmax * width,
-                                          ymin * height, ymax * height)        
+                    if len(box_conf) != 0 :
+                    	ymin, xmin, ymax, xmax = box_conf
+                    	(left, right, top, bottom) = (xmin * width, xmax * width,
+                                                 ymin * height, ymax * height)   
+                    	box_area=(int(bottom)-int(top))*(int(right)-int(left))
+                    else:
+                    	box_area=0	
+
+        if not ((box_area<1000) or (confidence<0.5)):
+
+            rospy.loginfo("TL: box are  %s confidence is %s",box_area, confidence)                         
         
             img_light = image_np[int(top):int(bottom), int(left):int(right)]
 
-            box_area=(int(bottom)-int(top))*(int(right)-int(left))
-            rospy.loginfo("TL: box are    %s",box_area)
-            if box_area>1000:
+
+            if 1:
                 traffic_light = cv2.resize(img_light, (64,128))       	
 
                 tl_hsv = cv2.cvtColor(traffic_light, cv2.COLOR_BGR2HSV)
@@ -138,6 +141,6 @@ class TLClassifier(object):
                                   scores,
                                   category_color,
                                   use_normalized_coordinates=True,
-                                  line_thickness=8)    
+                                  line_thickness=16)    
         return (self.traffic_light_color, image_np)
         
