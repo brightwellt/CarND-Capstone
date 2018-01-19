@@ -117,8 +117,8 @@ class TLClassifier(object):
                 blur = cv2.GaussianBlur(weighted_img,(15,15),0)
 		blur_yel = cv2.GaussianBlur(yel,(15,15),0)
 
-                circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)
-		circles_yel = cv2.HoughCircles(blur_yel,cv2.HOUGH_GRADIENT,0.5,41, param1=70,param2=20,minRadius=2,maxRadius=150)
+                circles = cv2.HoughCircles(blur,cv2.HOUGH_GRADIENT,0.5,40, param1=70,param2=20,minRadius=2,maxRadius=20)
+		circles_yel = cv2.HoughCircles(blur_yel,cv2.HOUGH_GRADIENT,0.5,40, param1=70,param2=20,minRadius=2,maxRadius=20)
 
                 if circles is None:
 		    if circles_yel is None:
