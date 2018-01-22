@@ -23,7 +23,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 20 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 30 # Number of waypoints we will publish. You can change this number
 
 
 class WaypointUpdater(object):
@@ -165,27 +165,29 @@ class WaypointUpdater(object):
         closest_dist = dl(waypoints[last_waypoint].pose.pose.position, vehicle_pose.position)
         closest_waypoint = last_waypoint
 
+        MIN_WAYPOINTS_TO_SEARCH = 10
+
         # Search forwards
         next_waypoint = last_waypoint + 1 if last_waypoint + 1 < len(waypoints) else 0
-        while next_waypoint != closest_waypoint:
+        waypoints_checked = MIN_WAYPOINTS_TO_SEARCH
+        while waypoints_checked > 0:
             dist = dl(waypoints[next_waypoint].pose.pose.position, vehicle_pose.position)
             if dist < closest_dist:
                 closest_dist = dist
                 closest_waypoint = next_waypoint
-                next_waypoint = next_waypoint + 1 if next_waypoint + 1 < len(waypoints) else 0
-            else:
-                break
+            next_waypoint = next_waypoint + 1 if next_waypoint + 1 < len(waypoints) else 0
+            waypoints_checked = waypoints_checked - 1
 
         # Search backwards
         prev_waypoint = last_waypoint - 1 if last_waypoint - 1 >= 0 else len(waypoints) - 1
-        while prev_waypoint != closest_waypoint:
+        waypoints_checked = MIN_WAYPOINTS_TO_SEARCH
+        while waypoints_checked > 0:
             dist = dl(waypoints[prev_waypoint].pose.pose.position, vehicle_pose.position)
             if dist < closest_dist:
                 closest_dist = dist
                 closest_waypoint = prev_waypoint
-                prev_waypoint = prev_waypoint - 1 if prev_waypoint - 1 >= 0 else len(waypoints) - 1
-            else:
-                break
+            prev_waypoint = prev_waypoint - 1 if prev_waypoint - 1 >= 0 else len(waypoints) - 1
+            waypoints_checked = waypoints_checked - 1
 
         return closest_waypoint
 
