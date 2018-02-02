@@ -14,6 +14,10 @@ print(tf.__version__ )
 
 def load_image_into_numpy_array(image):
 	return np.asarray(image, dtype="uint8")  
+def adjust_gamma(image, gamma=2):
+    invGamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+    return cv2.LUT(image, table)
 
 class TLClassifier(object):
     def __init__(self):        
@@ -57,13 +61,15 @@ class TLClassifier(object):
 
         """
         image_np = load_image_into_numpy_array(image)
+        image_np_adj = adjust_gamma(image_np, gamma=2)
+
         # Expand dimensions since the tensorflow model expects images to have shape: [1, None, None, 3]
-        image_np_expanded = np.expand_dims(image_np, axis=0)
+        image_np_expanded = np.expand_dims(image_np_adj, axis=0)
         # Actual detection.
         (boxes, scores, classes, num) = self.sess.run(
               [self.detection_boxes, self.detection_scores, self.detection_classes, self.num_detections],
               feed_dict={self.image_tensor: image_np_expanded})
-      
+        
         # In the model data, traffic lights have the index number 10
         category_index={ 10: {'id': 10, 'name': 'traffic light'}}
     
@@ -80,7 +86,7 @@ class TLClassifier(object):
                 if scores[i] > confidence:
                     confidence = scores[i]
                     box_conf = boxes[i]
-                    classes_10.append(classes[i])
+                    classes_10=classes[i]
                     if len(box_conf) != 0 :
                     	ymin, xmin, ymax, xmax = box_conf
                     	(left, right, top, bottom) = (xmin * width, xmax * width,
@@ -89,7 +95,7 @@ class TLClassifier(object):
                     else:
                     	box_area=0	
 
-        if not ((box_area<1000) or (confidence<0.5)):
+        if not ((box_area<800) or (confidence<0.3)):
 
             rospy.loginfo("TL: box are  %s confidence is %s",box_area, confidence)                         
         
@@ -134,13 +140,18 @@ class TLClassifier(object):
                 category_color={ 10: {'id': 10, 'name': self.traffic_light_color}} 
                 box_show=[]
                 box_show.append(box_conf)
+                conf_show=[]
+                conf_show.append(confidence)
+                classes_show=[]
+                classes_show.append(classes_10)
                 box_to_color_map =vis_util.visualize_boxes_and_labels_on_image_array(
                                   image_np,
                                   np.array(box_show),
-                                  np.array(classes_10),
-                                  scores,
+                                  np.array(classes_show),
+                                  np.array(conf_show),
                                   category_color,
                                   use_normalized_coordinates=True,
-                                  line_thickness=16)    
+                                  min_score_thresh=.3,
+                                  line_thickness=2)    
         return (self.traffic_light_color, image_np)
         
